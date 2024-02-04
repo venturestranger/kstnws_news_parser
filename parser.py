@@ -93,8 +93,7 @@ def parse(cycles=1, timeout=10, push=False, path='./links.txt'):
 				data = fetch_content(link, gpt_processed=True)
 				if data != -1:
 					push_content(data, link)
-
-				sleep(timeout)
+					sleep(timeout)
 		else:
 			save_links(links, path)
 
