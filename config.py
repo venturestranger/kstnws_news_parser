@@ -7,7 +7,7 @@ class Config:
 	DB_FILE = './storage/headings.db'
 	POOL_SERVER = 'https://tvoykostanay.kz/validate'
 	POOL_SERVER_USER_ID = 47
-	INIT = False
 	POOL_SERVER_TOKEN = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOiIyMDI0LTAxLTI0VDE0OjI1OjI0Ljc2NjA2NDQ2NloiLCJpYXQiOjE3MDYxMDI3MjQsImlzcyI6ImRvbWFpbiJ9.7IsgrGSoIU5dFWNsdTABdfZnMXAwt1G172T0_wWR6XA'
+	INIT = False
 	IMAGE_SCALE = 700
 	DUMMY_IMAGE = ''

@@ -7,6 +7,7 @@ from driver import search_image
 from driver import md5hash
 from config import Config
 from datetime import datetime
+from time import sleep
 import sqlite3
 import random
 import requests
@@ -59,7 +60,7 @@ def push_content(data, link):
 	conn.commit()
 	conn.close()
 
-def parse(cycles=1, timeout=1, push=False, path='./links.txt'):
+def parse(cycles=1, timeout=10, push=False, path='./links.txt'):
 	for i in range(cycles):
 		links = []
 		headings = []
@@ -92,6 +93,8 @@ def parse(cycles=1, timeout=1, push=False, path='./links.txt'):
 				data = fetch_content(link, gpt_processed=True)
 				if data != -1:
 					push_content(data, link)
+
+				sleep(timeout)
 		else:
 			save_links(links, path)
 
@@ -102,7 +105,7 @@ if __name__=='__main__':
 	if Config.INIT == True:
 		init()
 
-	parse(push=True)
+	parse(push=False)
 	"""
 	while True:
 		try:
