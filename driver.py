@@ -16,7 +16,7 @@ def md5hash(data):
 
 def search_image(keywords):
 	try:
-		response = requests.get(f'https://unsplash.com/s/photos/{keywords}-kazakhstan?license=free')
+		response = requests.get(f'https://unsplash.com/s/photos/{keywords}?license=free')
 		soup = Bs(response.text, 'html.parser')
 		figs = soup.find('figure', attrs={'itemprop': 'image'}).find_all('img')
 

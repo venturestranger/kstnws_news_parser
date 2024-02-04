@@ -105,14 +105,12 @@ if __name__=='__main__':
 	if Config.INIT == True:
 		init()
 
-	parse(push=False)
-	"""
+	#parse(push=False)
 	while True:
 		try:
-			parse()
+			parse(push=True, timeout=300)
 		except Exception as e:
 			print('Error', e)
-	"""
 
 # links = get_articles(file_path='links_headings.data')
 # push_content(fetch_content(links[0], gpt_processed=True))

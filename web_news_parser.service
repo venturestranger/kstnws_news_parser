@@ -1,0 +1,14 @@
+[Unit]
+Description=Web News Parser
+After=network.target
+
+[Service]
+Type=simple
+User=debian
+WorkingDirectory=/home/debian/kstnws/kstnws_news_parser
+ExecStart=/home/debian/.config/python/bin/python3.10 /home/debian/kstnws/kstnws_news_parser/parser.py
+Restart=always
+StartLimitInterval=0
+
+[Install]
+WantedBy=multi-user.target
