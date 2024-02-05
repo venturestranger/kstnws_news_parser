@@ -40,24 +40,16 @@ def push_content(data, link):
 	print('Pushing:', link)
 	print(payload)
 	
-	while True:
-		headers = {
-			'Authorization': 'Bearer ' + Config.POOL_SERVER_TOKEN
-		}
-		response = requests.post(Config.POOL_SERVER, json=payload, headers=headers)
-
-		if response.status_code == 200:
-			response = requests.get(Config.POOL_SERVER + f'?id_author={Config.POOL_SERVER_USER_ID}', headers=headers)
-			post_id = sorted(response.json(), key=lambda x: int(x['id']), reverse=True)[0]['id']
-			requests.put(Config.POOL_SERVER + f'/push?id={post_id}&pass=true', headers=headers)
-			break
-		else:
-			print("Fetching Authorization token")
-			response = requests.get(Config.POOL_SERVER + '/auth?key=domain')
-			Config.POOL_SERVER_TOKEN = response.text
-
+	headers = {
+		'Authorization': 'Bearer ' + Config.POOL_SERVER_TOKEN
+	}
+	requests.post(Config.POOL_SERVER, json=payload, headers=headers)
+	response = requests.get(Config.POOL_SERVER + f'?id_author={Config.POOL_SERVER_USER_ID}', headers=headers)
+	post_id = sorted(response.json(), key=lambda x: int(x['id']), reverse=True)[0]['id']
+	requests.put(Config.POOL_SERVER + f'/push?id={post_id}&pass=true', headers=headers)
 	cur.execute(f'INSERT INTO headings(id) VALUES({hashed})')
 	conn.commit()
+
 	conn.close()
 
 def parse(cycles=1, timeout=10, push=False, path='./links.txt'):
