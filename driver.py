@@ -11,9 +11,8 @@ from validation import Validator
 
 def md5hash(data):
 	hash_object = hashlib.md5(data.encode())
-	digest = hash_object.digest()
-	hashed = int.from_bytes(digest[:7], byteorder='big')
-	return hashed
+	digest = hash_object.hexdigest()
+	return digest
 
 def search_image(keywords):
 	try:
@@ -139,12 +138,12 @@ def save_links(links, file_path):
 def fetch_content(link, gpt_processed=True, timeout=300):
 	domain = link.split('://')[1].split('/')[0]
 	print(f'Fetching from {domain}: ', link)
-	hashed = abs(md5hash(link))
+	hashed = md5hash(link)
 
 	conn = sqlite3.connect(Config.DB_FILE)
 	cur = conn.cursor()
 
-	cur.execute(f'SELECT * FROM headings WHERE id = {hashed}')
+	cur.execute(f"SELECT * FROM headings WHERE hashed = '{hashed}'")
 	rows = cur.fetchall()
 	conn.close()
 	
