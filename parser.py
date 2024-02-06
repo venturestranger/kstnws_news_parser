@@ -16,11 +16,11 @@ def init():
 	conn = sqlite3.connect(Config.DB_FILE)
 	cur = conn.cursor()
 
-	cur.execute('CREATE TABLE IF NOT EXISTS headings (id INTEGER PRIMARY KEY)')
+	cur.execute('CREATE TABLE IF NOT EXISTS headings (id INTEGER PRIMARY KEY AUTOINCREMENT, hashed TEXT)')
 	conn.commit()
 
 def push_content(data, link):
-	hashed = abs(md5hash(link))
+	hashed = md5hash(link)
 
 	"""
 	conn = sqlite3.connect(Config.DB_FILE)
@@ -29,12 +29,21 @@ def push_content(data, link):
 	print('Pushing:', link)
 	print(payload)
 	
-	# pushing 
-
-	cur.execute(f'INSERT INTO headings(id) VALUES({hashed})')
+	cur.execute(f"INSERT INTO headings(hashed) VALUES('{hashed}')")
 	conn.commit()
 	conn.close()
 	"""
+
+	headers = {
+		'Authorization': 'Bearer ' + Config.POOL_SERVER_TOKEN
+	}
+	try:
+		requests.post(Config.POOL_SERVER, json=payload, headers=headers, timeout=3)
+		response = requests.get(Config.POOL_SERVER + f'?id_author={Config.POOL_SERVER_USER_ID}', headers=headers, timeout=3)
+		post_id = sorted(response.json(), key=lambda x: int(x['id']), reverse=True)[0]['id']
+		requests.put(Config.POOL_SERVER + f'/push?id={post_id}&pass=true', headers=headers, timeout=3)
+	except:
+		print('Error', e)
 
 def parse(cycles=1, timeout=10, push=False, path='./links.txt'):
 	for i in range(cycles):
@@ -78,11 +87,9 @@ if __name__=='__main__':
 	if Config.INIT == True:
 		init()
 
-	parse(push=False)
-	"""
+	#parse(push=False)
 	while True:
 		try:
-			parse()
+			parse(push=True, timeout=300)
 		except Exception as e:
 			print('Error', e)
-	"""

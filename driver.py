@@ -2,6 +2,7 @@ import requests
 import openai
 import sqlite3
 import hashlib
+import random
 from time import sleep
 from bs4 import BeautifulSoup as Bs 
 from config import Config
@@ -10,9 +11,8 @@ from validation import Validator
 
 def md5hash(data):
 	hash_object = hashlib.md5(data.encode())
-	digest = hash_object.digest()
-	hashed = int.from_bytes(digest[:7], byteorder='big')
-	return hashed
+	digest = hash_object.hexdigest()
+	return digest
 
 def process_response(response, domain):
 	response = response.split('\n')
@@ -33,7 +33,7 @@ def process_response(response, domain):
 		if 'контент' in words:
 			data['content'] = line
 		elif 'название' in words:
-			if line.startswith('"'):
+			if line.startswith('"') and line.endswith('"'):
 				line = line[1:-1]
 			data['title'] = line
 	
@@ -100,15 +100,15 @@ def save_links(links, file_path):
 			for link in links:
 				file.write(f'{link}\n')
 
-def fetch_content(link, gpt_processed=True):
+def fetch_content(link, gpt_processed=True, timeout=300):
 	domain = link.split('://')[1].split('/')[0]
 	print(f'Fetching from {domain}: ', link)
-	hashed = abs(md5hash(link))
+	hashed = md5hash(link)
 
 	conn = sqlite3.connect(Config.DB_FILE)
 	cur = conn.cursor()
 
-	cur.execute(f'SELECT * FROM headings WHERE id = {hashed}')
+	cur.execute(f"SELECT * FROM headings WHERE hashed = '{hashed}'")
 	rows = cur.fetchall()
 	conn.close()
 	
@@ -119,7 +119,7 @@ def fetch_content(link, gpt_processed=True):
 		soup = Bs(response.text, 'html.parser')
 
 		content = soup.text.replace('\n', '.').replace('  ', '.')
-		content = filter(lambda item: len(item) > 40, content.split('.'))
+		content = filter(lambda item: len(item) > 50, content.split('.'))
 		content = '\n'.join(list(content))
 
 		if gpt_processed == True:
@@ -137,9 +137,9 @@ def fetch_content(link, gpt_processed=True):
 						frequency_penalty=0.24,
 						presence_penalty=0.18,
 					)
-				except:
-					print('OpenAI rate limit at PROMPT_META. Hope next request works')
-					sleep(10)
+				except Exception as e:
+					print('OpenAI rate limit at PROMPT_META. Hope next request works', e)
+					sleep(timeout)
 				else:
 					data += str(response['choices'][0]['message']['content']) + '\n'
 					break
@@ -155,9 +155,9 @@ def fetch_content(link, gpt_processed=True):
 						frequency_penalty=0.24,
 						presence_penalty=0.18,
 					)
-				except:
-					print('OpenAI rate limit.at PROMPT_CONTENT. Hope next request works')
-					sleep(10)
+				except Exception as e:
+					print('OpenAI rate limit at PROMPT_META. Hope next request works', e)
+					sleep(timeout)
 				else:
 					data += 'Контент: ' + str(response['choices'][0]['message']['content'])
 					break
