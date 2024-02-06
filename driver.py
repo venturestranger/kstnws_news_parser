@@ -14,35 +14,11 @@ def md5hash(data):
 	hashed = int.from_bytes(digest[:7], byteorder='big')
 	return hashed
 
-def search_image(keywords):
-	try:
-		response = requests.get(f'https://unsplash.com/s/photos/{keywords}-kazakhstan?license=free')
-		soup = Bs(response.text, 'html.parser')
-		figs = soup.find('figure', attrs={'itemprop': 'image'}).find_all('img')
-
-		idx = len(figs) - 1
-		ret = ''
-
-		while idx != -1:
-			try:
-				srcs = figs[-1]['srcset']
-				links = srcs.split()
-				return links[links.index(f'{Config.IMAGE_SCALE}w,') - 1]
-			except:
-				idx -= 1
-	except:
-		return Config.DUMMY_IMAGE
-	else:
-		return Config.DUMMY_IMAGE
-
 def process_response(response, domain):
 	response = response.split('\n')
 	data = {}
 	data['title'] = ''
-	data['pic_url'] = ''
 	data['content'] = ''
-	data['category'] = ''
-	data['hashtags'] = ''
 
 	for line in response:
 		line = line.split(': ')
@@ -60,19 +36,9 @@ def process_response(response, domain):
 			if line.startswith('"'):
 				line = line[1:-1]
 			data['title'] = line
-		elif 'категория' in words:
-			data['category'] = line.strip()
-		elif 'ключевые' in words or 'слова' in words:
-			data['hashtags'] = line.strip()
 	
 	splitted = data['content'].split('. ')
 	data['content'] = '. '.join([splitted[0] + Config.POST_REFERENCE + domain] + splitted[1:])
-	
-	hashtags = data['hashtags'].split(', ')
-	data['hashtags'] = [item.strip().replace(' ', '-').lower() for item in hashtags]
-
-	data['pic_url'] = search_image('-'.join(data['hashtags']) + '-' + data['category'].lower())
-	data['hashtags'] = ' '.join(data['hashtags'])
 	return data
 
 def get_articles(links=None, headings=None, file_path=None):
