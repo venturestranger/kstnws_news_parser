@@ -1,5 +1,4 @@
 import requests
-import openai
 import sqlite3
 import hashlib
 import random
@@ -8,38 +7,33 @@ from bs4 import BeautifulSoup as Bs
 from config import Config
 from datetime import datetime
 from validation import Validator
+from language_models import process
 
 def md5hash(data):
 	hash_object = hashlib.md5(data.encode())
 	digest = hash_object.hexdigest()
 	return digest
 
-def process_response(response, domain):
-	response = response.split('\n')
-	data = {}
-	data['title'] = ''
-	data['content'] = ''
+def search_image(keywords):
+	try:
+		response = requests.get(f'https://unsplash.com/s/photos/{keywords}?license=free')
+		soup = Bs(response.text, 'html.parser')
+		figs = soup.find_all('figure', attrs={'itemprop': 'image'})
 
-	for line in response:
-		line = line.split(': ')
-		words = line[0].lower().split()
-
-		if len(words) > 2:
-			words = []
-			line = ': '.join(line[0:]).strip()
-		else:
-			line = ': '.join(line[1:]).strip()
-
-		if 'контент' in words:
-			data['content'] = line
-		elif 'название' in words:
-			if line.startswith('"') and line.endswith('"'):
-				line = line[1:-1]
-			data['title'] = line
-	
-	splitted = data['content'].split('. ')
-	data['content'] = '. '.join([splitted[0] + Config.POST_REFERENCE + domain] + splitted[1:])
-	return data
+		figs = figs[random.randint(0, max(len(figs) // Config.UNSPLASH_SEARCH_LIMITER, 1))].find_all('img')
+		idx = len(figs) - 1
+		ret = ''
+		
+		while idx != -1:
+			try:
+				srcs = figs[-1]['srcset']
+				links = srcs.split()
+				return links[links.index(f'{Config.IMAGE_SCALE}w,') - 1]
+			except:
+				idx -= 1
+		return Config.DUMMY_IMAGE
+	except:
+		return Config.DUMMY_IMAGE
 
 def get_articles(links=None, headings=None, file_path=None):
 	if file_path != None:
@@ -100,7 +94,7 @@ def save_links(links, file_path):
 			for link in links:
 				file.write(f'{link}\n')
 
-def fetch_content(link, gpt_processed=True, timeout=300):
+def fetch_content(link, ai_processed=True, timeout=300):
 	domain = link.split('://')[1].split('/')[0]
 	print(f'Fetching from {domain}: ', link)
 	hashed = md5hash(link)
@@ -118,56 +112,16 @@ def fetch_content(link, gpt_processed=True, timeout=300):
 		response = requests.get(link)
 		soup = Bs(response.text, 'html.parser')
 
-		content = soup.text.replace('\n', '.').replace('  ', '.')
-		content = filter(lambda item: len(item) > 50, content.split('.'))
-		content = '\n'.join(list(content))
+		content = soup.text.replace('\n', '. ').replace('  ', '.')
+		content = filter(lambda item: len(item) > 110, content.split('.'))
+		content = '. '.join(list(content))[:2000]
 
-		if gpt_processed == True:
-			openai.api_key = Config.OPENAI_TOKEN
-			data = ''
-			
-			while True:
-				try:
-					response = openai.ChatCompletion.create(    
-						model="gpt-3.5-turbo-16k",
-						messages=[{"role": "user", "content": Config.PROMPT_META + content}],
-						temperature=0.2,
-						max_tokens=4000,
-						top_p=1,
-						frequency_penalty=0.24,
-						presence_penalty=0.18,
-					)
-				except Exception as e:
-					print('OpenAI rate limit at PROMPT_META. Hope next request works', e)
-					sleep(timeout)
-				else:
-					data += str(response['choices'][0]['message']['content']) + '\n'
-					break
-
-			while True:
-				try:
-					response = openai.ChatCompletion.create(    
-						model="gpt-3.5-turbo-16k",
-						messages=[{"role": "user", "content": Config.PROMPT_CONTENT + content}],
-						temperature=0.2,
-						max_tokens=4000,
-						top_p=1,
-						frequency_penalty=0.24,
-						presence_penalty=0.18,
-					)
-				except Exception as e:
-					print('OpenAI rate limit at PROMPT_META. Hope next request works', e)
-					sleep(timeout)
-				else:
-					data += 'Контент: ' + str(response['choices'][0]['message']['content'])
-					break
-
-			processed_response = process_response(data, domain)
-			return processed_response
+		if ai_processed == True:
+			data = process(content)
+			return data
 		else:
-			# do not disable gpt_processed
+			# do not disable ai_processed
 			return content
 	else:
 		print('Already uploaded')
 		return -1
-
