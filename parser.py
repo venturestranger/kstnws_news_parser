@@ -20,37 +20,42 @@ def init():
 	conn.commit()
 
 def push_content(data, link):
-	hashed = md5hash(link)
-
-	payload = {
-		'id_author': Config.POOL_SERVER_USER_ID,
-		'title': data['title'],
-		'lead': '',
-		'picture_url': search_image(data['content']),
-		'content': data['content'],
-		'date_publication': datetime.now().strftime("%Y-%m-%dT%H:%M:%SZ"),
-		'date_edit': datetime.now().strftime("%Y-%m-%dT%H:%M:%SZ"),
-		'category': data['category'],
-		'hashtags': data['keywords'],
-		'comment': ''
-	}
-	print(payload)
-
-	"""
-	conn = sqlite3.connect(Config.DB_FILE)
-	cur = conn.cursor()
-
-	print('Pushing:', link)
-	print(payload)
-	
-	cur.execute(f"INSERT INTO headings(hashed) VALUES('{hashed}')")
-	conn.commit()
-	conn.close()
-	"""
-
 	try:
-		# post request
-		pass
+		hashed = md5hash(link)
+
+		payload = {
+			'id_author': Config.POOL_SERVER_USER_ID,
+			'title': data['title'],
+			'lead': '',
+			'picture_url': search_image((' '.join(data['keywords'])).replace(' ', '-')),
+			'content': data['content'],
+			'date_publication': datetime.now().strftime("%Y-%m-%dT%H:%M:%SZ"),
+			'date_edit': datetime.now().strftime("%Y-%m-%dT%H:%M:%SZ"),
+			'category': '',
+			'hashtags': ' '.join(data['keywords']),
+			'comment': ''
+		}
+
+		conn = sqlite3.connect(Config.DB_FILE)
+		cur = conn.cursor()
+
+		print('Pushing:', link)
+		print(payload)
+		
+		cur.execute(f"INSERT INTO headings(hashed) VALUES('{hashed}')")
+		conn.commit()
+		conn.close()
+
+		try:
+			headers = {
+				'Authorization': 'Bearer ' + Config.POOL_SERVER_TOKEN
+			}
+			requests.post(Config.POOL_SERVER, json=payload, headers=headers, timeout=3)
+			response = requests.get(Config.POOL_SERVER + f'?id_author={Config.POOL_SERVER_USER_ID}', headers=headers, timeout=3)
+			post_id = sorted(response.json(), key=lambda x: int(x['id']), reverse=True)[0]['id']
+			requests.put(Config.POOL_SERVER + f'/push?id={post_id}&pass=true', headers=headers, timeout=3)
+		except:
+			print('Error', e)
 	except:
 		print('Error', e)
 
@@ -84,10 +89,13 @@ def parse(cycles=1, timeout=10, push=False, path='./links.txt'):
 		if push == True:
 			random.shuffle(links)
 			for link in links:
-				data = fetch_content(link, ai_processed=True)
-				if data != -1:
-					push_content(data, link)
-					sleep(timeout)
+				try:
+					data = fetch_content(link, ai_processed=True)
+					if data != -1:
+						push_content(data, link)
+						sleep(timeout)
+				except Exception as e:
+					print('Error', e)
 		else:
 			save_links(links, path)
 
@@ -96,7 +104,6 @@ if __name__=='__main__':
 	if Config.INIT == True:
 		init()
 
-	#parse(push=False)
 	while True:
 		try:
 			parse(push=True, timeout=300)

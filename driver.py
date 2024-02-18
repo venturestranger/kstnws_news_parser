@@ -114,7 +114,7 @@ def fetch_content(link, ai_processed=True, timeout=300):
 
 		content = soup.text.replace('\n', '. ').replace('  ', '.')
 		content = filter(lambda item: len(item) > 110, content.split('.'))
-		content = '. '.join(list(content))[:2000]
+		content = '. '.join(list(content))[:1000]
 
 		if ai_processed == True:
 			data = process(content)

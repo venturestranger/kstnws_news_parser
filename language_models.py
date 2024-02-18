@@ -1,4 +1,3 @@
-from openai import OpenAI
 from config import Config
 from deep_translator import GoogleTranslator
 from pymystem3 import Mystem
@@ -9,16 +8,17 @@ from sklearn.pipeline import Pipeline
 import pickle
 import numpy as np
 import requests
+import re
 
 class LLM:
 	def __init__(self):
 		pass
 
-	def query(self, content, is_title=False):
+	def query(self, content, is_title=False, is_category=False):
 		try:
 			params = {
 				'model': Config.LLM_MODEL,
-				'prompt': Config.PROMPT_TITLE if is_title else Config.PROMPT_CONTENT + content,
+				'prompt': content + (Config.PROMPT_TITLE if is_title else Config.PROMPT_CATEGORY if is_category else Config.PROMPT_CONTENT),
 				'stream': False
 			}
 			resp = requests.post(Config.LLM_BASE_URL, json=params)
@@ -85,11 +85,16 @@ class TopicRecognizer:
 		except Exception as e:
 			print('TopicRecognizer: not initialized ', e)
 	
-	def fit(self, text, n_topics=100, path='./models/', stopwords_loc='stopwords-ru.txt'):
+	def fit(self, text, n_topics=100, path='./models/', stopwords_loc='stopwords-ru.txt', tokens=None):
 		self.normalizer = Normalizer(stopwords_loc=stopwords_loc, path=path)
-		for idx in range(len(text)):
-			text[idx] = ' '.join(normalizer.query(text[idx]))
-			print(f'Fit on: {idx} / {len(text)}')
+
+		if tokens == None:
+			for idx in range(len(text)):
+				text[idx] = ' '.join(normalizer.query(text[idx]))
+				print(f'Fit on: {idx} / {len(text)}')
+		else:
+			with open(path + tokens) as file:
+				text = pickle.load(file)
 
 		vectorizer = TfidfVectorizer(max_features=10000)
 		tfidf_matrix = vectorizer.fit_transform(text)
@@ -116,7 +121,6 @@ def process(text):
 	print('Started processing text')
 	llm = LLM()
 	topic = TopicRecognizer()
-	category = TopicRecognizer()
 	trans = Translator()
 
 	print('[o]> ', text)
@@ -127,9 +131,25 @@ def process(text):
 	
 	data = {}
 	data['title'] = trans.query(llm.query(text, is_title=True))
+
+	data['title'] = data['title'].split('\n')[0]
+	if data['title'].startswith('Название:'):
+		data['title'] = data['title'][:9].strip()
+	if data['title'][-1].isalpha() == False and data['title'][0].isalpha() == False:
+		data['title'] = data['title'][1:-1]
+
 	data['content'] = trans.query(text)
-	data['keywords'] = topic.query(text, n_returns=3)
-	data['category'] = category.query(text, n_returns=1)
+	data['keywords'] = [trans.query(item, source='ru', target='en') for item in list(topic.query(text, n_returns=3))]
+
+	"""
+	data['category'] = llm.query(text, is_category=True)
+	print(data['category'])
+	if data['category'].startswith('Topic'):
+		data['category'] = ''.join([a for a in data['category'].split()[0] if a.isalpha()])
+	else:
+		data['category'] = ''.join([a for a in data['category'].split()[1] if a.isalpha()])
+	"""
+
 	print('[v]> ', data['content'], data['keywords'])
 	return data
 		
@@ -144,6 +164,13 @@ if __name__=='__main__':
 	print(text.split('@#$')[-4])
 	print(model.query(text.split('@#$')[-4], n_returns=3))
 	"""
-	text = """У казахстанцев скоро появится возможность легально трудоустроиться в Южной Корее. Как это можно будет сделать, рассказала министр труда и социальной защиты населения Светлана Жакупова, передает корреспондент Tengrinews.kz.11 По словам Светланы Жакуповой, в Минтруда был разработан проект, который согласовали с госорганами и направили через Министерство иностранных дел корейской стороне для согласования. "Какие подготовительные работы были проведены? Министерством совместно с акиматами Алматы, Алматинской области подготовлены производственная база в городе Кунаеве и Центр сертификации на базе университета имени Аль-Фараби. Эти работы проведены для того, чтобы выезжающие казахстанцы могли получить основы корейского языка, основы по тем профессиям, по которым будут даны разрешения [на работу], чтобы они приобретали квалификацию, чтобы мы их готовили", - сказала министр. """
+	"""
+	text = 'У казахстанцев скоро появится возможность легально трудоустроиться в Южной Корее. Как это можно будет сделать, рассказала министр труда и социальной защиты населения Светлана Жакупова, передает корреспондент Tengrinews.kz.11 По словам Светланы Жакуповой, в Минтруда был разработан проект, который согласовали с госорганами и направили через Министерство иностранных дел корейской стороне для согласования. "Какие подготовительные работы были проведены? Министерством совместно с акиматами Алматы, Алматинской области подготовлены производственная база в городе Кунаеве и Центр сертификации на базе университета имени Аль-Фараби. Эти работы проведены для того, чтобы выезжающие казахстанцы могли получить основы корейского языка, основы по тем профессиям, по которым будут даны разрешения [на работу], чтобы они приобретали квалификацию, чтобы мы их готовили", - сказала министр. '1500]
 
-	process(text)
+	print(process(text))
+	"""
+
+	topic = TopicRecognizer()
+	while True:
+		inp = input()
+		print(topic.query(inp, n_returns=3))
