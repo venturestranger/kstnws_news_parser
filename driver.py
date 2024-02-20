@@ -117,7 +117,7 @@ def fetch_content(link, ai_processed=True, timeout=300):
 		content = '. '.join(list(content))[:1000]
 
 		if ai_processed == True:
-			data = process(content)
+			data = process(content, domain)
 			return data
 		else:
 			# do not disable ai_processed

@@ -118,7 +118,7 @@ class TopicRecognizer:
 			print('TopicRecognizer: ', e)
 			return -1
 
-def process(text):
+def process(text, domain):
 	print('Started processing text')
 	llm = LLM()
 	topic = TopicRecognizer()
@@ -140,6 +140,9 @@ def process(text):
 		data['title'] = data['title'][1:-1]
 
 	data['content'] = trans.query(text)
+	splitted = data['content'].split('. ')
+	data['content'] = '. '.join([splitted[0] + Config.POST_REFERENCE + domain] + splitted[1:])
+
 	data['keywords'] = [trans.query(item, source='ru', target='en') for item in list(topic.query(text, n_returns=3))]
 	random.shuffle(data['keywords'])
 
@@ -168,7 +171,7 @@ if __name__=='__main__':
 	"""
 	text = """У казахстанцев скоро появится возможность легально трудоустроиться в Южной Корее. Как это можно будет сделать, рассказала министр труда и социальной защиты населения Светлана Жакупова, передает корреспондент Tengrinews.kz.11 По словам Светланы Жакуповой, в Минтруда был разработан проект, который согласовали с госорганами и направили через Министерство иностранных дел корейской стороне для согласования. "Какие подготовительные работы были проведены? Министерством совместно с акиматами Алматы, Алматинской области подготовлены производственная база в городе Кунаеве и Центр сертификации на базе университета имени Аль-Фараби. Эти работы проведены для того, чтобы выезжающие казахстанцы могли получить основы корейского языка, основы по тем профессиям, по которым будут даны разрешения [на работу], чтобы они приобретали квалификацию, чтобы мы их готовили", - сказала министр. """[:1500]
 
-	print(process(text))
+	print(process(text, 'x'))
 	"""
 
 	topic = TopicRecognizer()
