@@ -135,16 +135,17 @@ def process(text, domain):
 
 	data['title'] = data['title'].split('\n')[0]
 	if data['title'].startswith('Название:'):
-		data['title'] = data['title'][:9].strip()
+		data['title'] = data['title'][9:].strip()
 	if data['title'][-1].isalpha() == False and data['title'][0].isalpha() == False:
 		data['title'] = data['title'][1:-1]
 
 	data['content'] = trans.query(text)
+	data['keywords'] = [trans.query(item, source='ru', target='en') for item in list(topic.query(data['content'], n_returns=3))]
+	random.shuffle(data['keywords'])
+
 	splitted = data['content'].split('. ')
 	data['content'] = '. '.join([splitted[0] + Config.POST_REFERENCE + domain] + splitted[1:])
 
-	data['keywords'] = [trans.query(item, source='ru', target='en') for item in list(topic.query(text, n_returns=3))]
-	random.shuffle(data['keywords'])
 
 	"""
 	data['category'] = llm.query(text, is_category=True)
